@@ -1,0 +1,35 @@
+name: daily-nav
+
+on:
+  schedule:
+    # 21:30 UTC workdays ~ 17:30 ET (DST) / 16:30 ET (standard) - after the close.
+    - cron: "30 21 * * 1-5"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write            # need write to push nav.csv + concentration_log.csv back
+
+jobs:
+  track:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Record NAV + concentration
+        env:
+          ALPACA_KEY:    ${{ secrets.ALPACA_KEY }}
+          ALPACA_SECRET: ${{ secrets.ALPACA_SECRET }}
+        run: |
+          python track.py
+          python concentration.py || true
+      - name: Commit logs
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add nav.csv concentration_log.csv 2>/dev/null || true
+          git commit -m "nav + concentration $(date -u +%F)" || echo "nothing to commit"
+          git push || echo "push skipped"

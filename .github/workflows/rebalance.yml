@@ -1,0 +1,25 @@
+name: weekly-rebalance
+
+on:
+  schedule:
+    # 15:00 UTC Mon ~ 11:00 ET (DST) / 10:00 ET (standard) - market is open either way.
+    # GitHub cron runs in UTC and does NOT shift for DST, so this drifts ~1h across
+    # the year - fine for a weekly rebalance.
+    - cron: "0 15 * * 1"
+  workflow_dispatch: {}
+
+jobs:
+  rebalance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Rebalance to momentum targets
+        env:
+          ALPACA_KEY:    ${{ secrets.ALPACA_KEY }}
+          ALPACA_SECRET: ${{ secrets.ALPACA_SECRET }}
+        run: python trade.py
