@@ -5,6 +5,7 @@ which works with fractional shares and small account sizes.
 """
 
 import os
+import time
 
 from alpaca.trading.client import TradingClient
 from alpaca.trading.enums import OrderSide, TimeInForce
@@ -27,6 +28,15 @@ MIN_TRADE_USD = 5.0  # skip rebalance adjustments smaller than this
 def rebalance():
     targets, _ = get_targets()
     target_set = set(targets)
+
+    # Idempotency: cancel any open orders left over from a prior dispatch
+    # attempt. Without this, a pending close from a crashed earlier run pins
+    # all that symbol's shares as held_for_orders, so the next close_position
+    # call raises APIError 40310000 ("insufficient qty available for order").
+    cancelled = client.cancel_orders()
+    if cancelled:
+        print(f"Cancelled {len(cancelled)} pending order(s) from prior dispatch.")
+        time.sleep(2)  # let Alpaca release the held_for_orders qty
 
     account = client.get_account()
     equity = float(account.equity)
