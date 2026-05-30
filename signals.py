@@ -55,7 +55,7 @@ assert set(BUCKET_OF) == set(UNIVERSE), "BUCKET_OF / UNIVERSE mismatch"
 
 # selection knobs
 TOP_N = 10
-MAX_PER_BUCKET = 5   # no single bucket > half the book; set to 4 to force all 3 in
+MAX_PER_BUCKET = 6   # loosened from 5: allows one bucket to take 6/10 if momentum demands it
 
 # Momentum window (12-1: 12-month look-back skipping the most recent month).
 LOOKBACK = 252
