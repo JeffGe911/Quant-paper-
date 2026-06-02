@@ -1,2 +1,3 @@
 timestamp,n_positions,max_per_bucket,chips_count,memory_count,power_count,max_bucket_count,binding_buckets,bucket_holdings,book
 2026-06-01T23:13:50,10,6,3,4,3,4,,"chips:INTC,AMD,LRCX|memory:SNDK,WDC,STX,MU|power:POWL,VRT,NVT",SNDK|WDC|STX|MU|INTC|POWL|VRT|AMD|LRCX|NVT
+2026-06-02T23:16:24,10,6,3,4,3,4,,"chips:INTC,LRCX,AMD|memory:SNDK,WDC,STX,MU|power:POWL,VRT,NVT",SNDK|WDC|STX|MU|INTC|POWL|LRCX|VRT|AMD|NVT
