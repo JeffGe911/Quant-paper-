@@ -4,6 +4,7 @@ Uses diff-based position adjustment with notional (dollar-amount) orders,
 which works with fractional shares and small account sizes.
 """
 
+import math
 import os
 import time
 
@@ -12,7 +13,7 @@ from alpaca.trading.enums import OrderSide, TimeInForce
 from alpaca.trading.requests import MarketOrderRequest
 from dotenv import load_dotenv
 
-from signals import TOP_N, fetch_prices, get_targets
+from signals import TOP_N, get_targets
 
 load_dotenv()
 
@@ -29,6 +30,9 @@ def rebalance():
     targets, _ = get_targets()
     target_set = set(targets)
 
+    if len(target_set) != TOP_N:
+        raise ValueError(f"Expected {TOP_N} distinct targets, got {len(target_set)}")
+
     # Idempotency: cancel any open orders left over from a prior dispatch
     # attempt. Without this, a pending close from a crashed earlier run pins
     # all that symbol's shares as held_for_orders, so the next close_position
@@ -40,30 +44,31 @@ def rebalance():
 
     account = client.get_account()
     equity = float(account.equity)
+    if not math.isfinite(equity) or equity <= 0:
+        raise ValueError(f"Invalid account equity: {equity}")
     target_value = equity / TOP_N
-
-    prices = fetch_prices()
-    latest = prices.iloc[-1]
 
     print(f"Equity:  ${equity:,.2f}")
     print(f"Target per position:  ${target_value:,.2f}")
     print(f"Targets: {targets}\n")
 
-    positions = {p.symbol: float(p.qty) for p in client.get_all_positions()}
+    positions = {p.symbol: p for p in client.get_all_positions()}
+    adjustments = {}
+    for sym in targets:
+        current_value = float(positions[sym].market_value) if sym in positions else 0.0
+        diff_value = target_value - current_value
+        if not math.isfinite(diff_value):
+            raise ValueError(f"Invalid dollar adjustment for {sym}: {diff_value}")
+        adjustments[sym] = diff_value
 
     # 1. Close positions no longer in the target set.
     for sym in list(positions):
         if sym not in target_set:
             print(f"  CLOSE  {sym}")
             client.close_position(sym)
-            positions.pop(sym)
 
     # 2. Adjust each target to the desired notional weight.
-    for sym in targets:
-        target_shares = target_value / float(latest[sym])
-        current_shares = positions.get(sym, 0.0)
-        diff_value = (target_shares - current_shares) * float(latest[sym])
-
+    for sym, diff_value in adjustments.items():
         if abs(diff_value) < MIN_TRADE_USD:
             print(f"  SKIP   {sym}  (diff ${diff_value:+,.2f} under threshold)")
             continue
